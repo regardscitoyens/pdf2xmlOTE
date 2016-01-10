@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-import sys, io, csv, argparse
+import os, sys, io, csv, argparse
 from bs4 import BeautifulSoup
 
 # Paramètres
@@ -29,7 +29,16 @@ parser.add_argument('-m', '--margin',
                     default=False,
                     dest="margin",
                     metavar="<marge des intervalles en nombre de pixels>",
-                    help="Permet de choisir une marge en nombre de pixels pour les intervalles de détection des colonnes (vaut 10 par défaut).\n\nExemple: Si une colonne est détectée à 90 pixels et une suivante à 120 pixels, avec une valeur de 10 pour ce paramètre, l'interval de détection de la 1ère colonne sera de 80 à 109 (90 - m = 80 et 120 - m - 1 = 109). Toutes les cellulles dont le début est situé entre ces valeurs sera attribué à la première colonne, etc.")
+                    help="Permet de choisir une marge en nombre de pixels pour décaler les intervalles de détection des colonnes (vaut 10 par défaut, peut prendre une valeur négative).\n\nExemple: Si une colonne est détectée à 90 pixels et une suivante à 120 pixels, avec une valeur de 10 pour ce paramètre, l'interval de détection de la 1ère colonne sera de 80 à 109 (90 - m = 80 et 120 - m - 1 = 109). Toutes les cellulles dont le début est situé entre ces valeurs sera attribué à la première colonne, etc. Par défaut ce paramètre vaut 10.")
+
+parser.add_argument('-s', '--showgrid',
+                    required=False,
+                    default=False,
+                    dest="showgrid",
+                    action='store_const',
+                    const=True,
+                    metavar="<Afficher matrice>",
+                    help="Générer une image SVG de la matrice des colonnes. Visible dans un navigateur web via le fichier grid.html")
 
 args = parser.parse_args()
 
@@ -42,6 +51,8 @@ data = {}
 for page in soup.find_all('page'):
 
   pgnb = int(page.get('number'))
+  pgheight = int(page.get('height'))
+  pgwidth = int(page.get('width'))
 
   data[pgnb] = {}
 
@@ -138,11 +149,19 @@ for page in sorted_data:
 
       for cell in sorted_line:
 
+        ok = False
+
         for r in ranges:
 
           if cell >= ranges[r]['mini'] and cell <= ranges[r]['maxi']:
 
             row[r] = data[page][line][cell]
+
+            ok = True
+
+        if ok is False:
+          print(cell)
+          print("Not found in ranges")
 
     else:
 
@@ -154,3 +173,45 @@ for page in sorted_data:
     writer = csv.DictWriter(output, fieldnames=sorted(row.keys()), quoting=csv.QUOTE_NONNUMERIC)
     writer.writerow({k:v.encode('utf8') for k,v in row.items()})
     print(output.getvalue().strip())
+
+if args.showgrid:
+
+  soup = BeautifulSoup(open('blank_grid.svg'), "lxml-xml")
+
+  tag = soup.svg
+  tag['height'] = '200px'
+  tag['width'] = str(pgwidth)+'px'
+
+  cols = soup.find_all(id="cols")[0]
+
+  i = 1
+
+  for r in ranges:
+    if ranges[r]['mini'] + (ranges[r]['maxi']-ranges[r]['mini']) > pgwidth:
+      colwidth = pgwidth - ranges[r]['mini']
+    else:
+      colwidth = ranges[r]['maxi']-ranges[r]['mini']
+
+    new_col = soup.new_tag("rect", title=str(ranges[r]['mini'])+" <-> "+str(ranges[r]['maxi']), x=ranges[r]['mini'] , y="0" , height="200px" , width=colwidth , id="colid_"+str(i) , style="fill:none;stroke:blue;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1")
+    cols.append(new_col)
+    i += 1
+
+  with open("grid.svg", "wb") as file:
+    file.write(soup.prettify("utf-8"))
+
+  soup = BeautifulSoup(open('grid.html'), "lxml-xml")
+
+  embed = soup.find_all('embed')[0]
+  embed['src'] = os.path.splitext(os.path.split(args.file)[1])[0]+'.pdf'
+
+  with open("grid.html", "wb") as file:
+    file.write(soup.prettify("utf-8"))
+
+
+
+
+
+
+
+
+
