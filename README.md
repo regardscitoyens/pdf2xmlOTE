@@ -9,10 +9,12 @@ Il utilise Beautifulsoup 4 avec lxml et fonctionne avec python 2.7
 ## Usage :
 
 ```bash
-python parse.py -f file.xml > new_file.csv
+$ python parse.py -f file.xml > new_file.csv
 ```
 
-## Usage avancé :
+Voir plus bas pour la génération de fichiers XML avec pdf2html.
+
+## Utilisation avancée :
 
 pdf2xmlOTE compte le nombre de cellules par lignes et utilise le nombre maximum trouvé pour créer une matrice de colonnes virtuelles. Dans certains cas difficiles il peut être utile de forcer un nombre de colonnes différent. Ceci peut être effectué avec le paramètre -n :
 
@@ -51,6 +53,8 @@ $ python parse.py -h
 ```
 
 ### Générer des XML avec pdf2html :
+
+pdf2html fait partie de poppler-utils, une excellente collection d'outils utilisant la librairie Poppler (apt-get install poppler-utils).
 
 Comme pdf2xmlOTE essaye de générer les cellules vides non présentes dans la sortie de pdf2html, il est important de parser séparément des tableaux comportant des structures différentes.
 
